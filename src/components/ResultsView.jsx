@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell,
 } from "recharts";
 import { COLORS, SCALE_DEFS } from "../config";
 import { getPercentage, getLevel } from "../scoring";
@@ -10,6 +9,8 @@ import ScoreCard from "./ScoreCard";
 import Button from "./Button";
 
 // ─── Clinical prompt builder ─────────────────────────────────────────
+
+const CLINICIAN = "Jonathan Procter, Ph.D., LMHC, CRC, NCC, ACS";
 
 function buildClinicalPrompt(allScores, clientName, assessmentType, previousData) {
   const s = allScores;
@@ -22,9 +23,10 @@ function buildClinicalPrompt(allScores, clientName, assessmentType, previousData
     return `${p}th percentile of range — ${getLevel(p)}`;
   };
 
-  let prompt = `You are a clinical psychologist specializing in Compassion-Focused Therapy (CFT). Generate a comprehensive clinical write-up based on the following assessment battery results. Write in a professional yet warm clinical voice. This should serve as both a clinical document AND a reflection tool that could guide future therapeutic exploration.
+  let prompt = `You are a clinical psychologist specializing in Compassion-Focused Therapy (CFT), writing a comprehensive clinical assessment report. Write in a professional yet warm clinical voice. This report must be both a rigorous clinical document AND a practical treatment-planning tool with specific, actionable interventions.
 
-CLIENT: ${clientName || "Client"}
+CLINICIAN: ${CLINICIAN}
+CLIENT: ${clientName}
 ASSESSMENT TYPE: ${assessmentType.toUpperCase()}
 DATE: ${new Date().toLocaleDateString()}
 
@@ -61,43 +63,105 @@ Previous Compassionate Action: ${ps.ceas.action.score}/${ceasDefs.action.max}`;
 
   prompt += `
 
-Please write a clinical narrative that includes:
+Generate a clinical report with the following sections. Use markdown headers (## for sections). Mix flowing paragraphs with structured lists where appropriate — prioritize clinical utility over prose style.
 
-1. **Attachment Profile**: Interpret the ECR-RS pattern. What attachment style does this suggest? How might this manifest in therapeutic relationship and daily life?
+## Clinical Assessment Summary
+Clinician: ${CLINICIAN}
+Client: ${clientName}
+Date and assessment type. Brief 2-3 sentence overview of the overall clinical picture.
 
-2. **Compassion Blocks Analysis**: Analyze the three FOCS subscales. Where are the biggest barriers? What might these fears protect against? Note any discrepancies between extending vs. receiving vs. self-compassion fears.
+## Attachment Profile
+Interpret the ECR-RS pattern. Name the attachment style. Describe how it likely manifests in: (a) the therapeutic relationship, (b) close personal relationships, and (c) self-regulation under stress.
 
-3. **Self-Compassion Capacity**: Interpret the CEAS-SC. Where is engagement vs. action? What might explain any gaps between noticing distress and taking compassionate action?
+## Compassion Flow Analysis
+Analyze all three FOCS subscales. Identify which direction of compassion flow is most blocked. Explain what these fears may protect against psychologically. Note discrepancies between extending, receiving, and self-compassion fears — what story do the gaps tell?
 
-4. **Three Systems Formulation**: Map the full picture onto the CFT three-circle model (Threat, Drive, Soothing systems). Which system appears overactive? Which is underdeveloped? How do the scores tell a coherent story?
+## Self-Compassion Capacity
+Interpret CEAS-SC engagement vs. action. Identify whether the gap is in awareness (noticing distress) or in response (taking compassionate action). What does this mean for intervention sequencing?
 
-5. **Clinical Implications & Therapeutic Direction**: What are the 3-4 most important therapeutic targets? What CFT interventions would be most indicated? What should the therapist be mindful of in the therapeutic relationship given this profile?
+## Three Systems Formulation
+Map onto the CFT three-circle model (Threat, Drive, Soothing). Identify: which system is overactive, which is underdeveloped, and how the systems interact in this client's specific pattern. Be concrete about how this shows up in daily life.
 
-6. **Reflective Questions for the Client**: Offer 3-4 open-ended questions the client could sit with that emerge naturally from their specific pattern.
+## Treatment Plan & Therapeutic Targets
+This is the most important section. For each target, provide:
 
-${previousData ? "7. **Pre/Post Change Analysis**: Compare the pretest and posttest scores. Where has the client grown? What remains sticky? What does the pattern of change suggest about the therapeutic work?" : ""}
+**Target 1: [Name]**
+- Clinical rationale (why this target, based on scores)
+- Specific CFT interventions (name the actual exercises/techniques)
+- Session structure recommendation (e.g., "Introduce in session 3-4, practice for 2-3 sessions")
+- Between-session practice assignment
 
-Write in flowing paragraphs, not bullet points. Use clinical language that is accessible. Approximately 800-1200 words.`;
+**Target 2: [Name]**
+(same structure)
+
+**Target 3: [Name]**
+(same structure)
+
+**Target 4: [Name]** (if warranted)
+(same structure)
+
+Include specific CFT exercises such as: soothing rhythm breathing, compassionate image work, compassion-focused chair work, compassionate letter writing, fears of compassion exploration, threat system psychoeducation, multiple selves work, compassionate mind training, body-based soothing practices, or other evidence-based CFT interventions. Be specific — name the exercise, describe what it targets, and how to implement it.
+
+## Therapeutic Relationship Considerations
+Based on the attachment profile: what should the clinician watch for in the therapeutic alliance? What rupture patterns might emerge? How should the clinician adapt their relational stance?
+
+## Between-Session Practices
+List 3-5 specific homework/practice assignments the client can begin, ranked by priority. For each: name it, describe it in 1-2 sentences, specify frequency (daily, 3x/week, etc.), and note what it targets.
+
+## Reflective Questions for the Client
+4-5 open-ended questions tailored to this client's specific pattern that could guide self-exploration between sessions.
+
+${previousData ? `## Pre/Post Change Analysis
+Compare pretest and posttest scores. For each scale: direction of change, clinical significance, what it suggests about therapeutic progress. Identify what has improved, what remains stuck, and what may need a shift in intervention approach.` : ""}
+
+## Summary & Next Steps
+2-3 sentence synthesis. Recommended reassessment timeline. Any flags for the clinician.
+
+Write approximately 1500-2500 words. Be clinically specific — avoid generic advice. Every recommendation should connect back to this client's actual scores.`;
 
   return prompt;
 }
 
-// ─── Radar chart data builder ────────────────────────────────────────
+// ─── Clinical profile bar data builder ───────────────────────────────
 
-function buildRadarData(allScores) {
+function buildProfileData(allScores) {
   const ecrDefs = SCALE_DEFS.ecr.subscales;
   const focsDefs = SCALE_DEFS.focs.subscales;
   const ceasDefs = SCALE_DEFS.ceas.subscales;
 
   return [
-    { dimension: "Avoidance", value: getPercentage(allScores.ecr.avoidance.score, ecrDefs.avoidance.min, ecrDefs.avoidance.max), fullMark: 100 },
-    { dimension: "Anxiety", value: getPercentage(allScores.ecr.anxiety.score, ecrDefs.anxiety.min, ecrDefs.anxiety.max), fullMark: 100 },
-    { dimension: "Fear: Extending", value: getPercentage(allScores.focs.extending.score, focsDefs.extending.min, focsDefs.extending.max), fullMark: 100 },
-    { dimension: "Fear: Receiving", value: getPercentage(allScores.focs.receiving.score, focsDefs.receiving.min, focsDefs.receiving.max), fullMark: 100 },
-    { dimension: "Fear: Self", value: getPercentage(allScores.focs.selfCompassion.score, focsDefs.selfCompassion.min, focsDefs.selfCompassion.max), fullMark: 100 },
-    { dimension: "Engagement", value: getPercentage(allScores.ceas.engagement.score, ceasDefs.engagement.min, ceasDefs.engagement.max), fullMark: 100 },
-    { dimension: "Action", value: getPercentage(allScores.ceas.action.score, ceasDefs.action.min, ceasDefs.action.max), fullMark: 100 },
+    { name: "Avoidance", value: getPercentage(allScores.ecr.avoidance.score, ecrDefs.avoidance.min, ecrDefs.avoidance.max), fill: COLORS.driveDark, system: "Attachment" },
+    { name: "Anxiety", value: getPercentage(allScores.ecr.anxiety.score, ecrDefs.anxiety.min, ecrDefs.anxiety.max), fill: COLORS.threatDark, system: "Attachment" },
+    { name: "Fear: Extending", value: getPercentage(allScores.focs.extending.score, focsDefs.extending.min, focsDefs.extending.max), fill: COLORS.drive, system: "Compassion Fears" },
+    { name: "Fear: Receiving", value: getPercentage(allScores.focs.receiving.score, focsDefs.receiving.min, focsDefs.receiving.max), fill: COLORS.threat, system: "Compassion Fears" },
+    { name: "Fear: Self", value: getPercentage(allScores.focs.selfCompassion.score, focsDefs.selfCompassion.min, focsDefs.selfCompassion.max), fill: COLORS.accent, system: "Compassion Fears" },
+    { name: "Engagement", value: getPercentage(allScores.ceas.engagement.score, ceasDefs.engagement.min, ceasDefs.engagement.max), fill: COLORS.soothing, system: "Self-Compassion" },
+    { name: "Action", value: getPercentage(allScores.ceas.action.score, ceasDefs.action.min, ceasDefs.action.max), fill: COLORS.soothingDark, system: "Self-Compassion" },
   ];
+}
+
+// ─── Custom bar with per-bar color ──────────────────────────────────
+
+function ProfileBar(props) {
+  const { x, y, width, height, payload } = props;
+  return <rect x={x} y={y} width={width} height={height} rx={4} fill={payload.fill} />;
+}
+
+// ─── Clinical zone reference lines ──────────────────────────────────
+
+function ClinicalZones() {
+  return (
+    <>
+      <defs>
+        <pattern id="zone-low" x="0" y="0" width="100%" height="100%">
+          <rect width="100%" height="100%" fill={COLORS.soothingLight} opacity="0.3" />
+        </pattern>
+        <pattern id="zone-high" x="0" y="0" width="100%" height="100%">
+          <rect width="100%" height="100%" fill={COLORS.threatLight} opacity="0.3" />
+        </pattern>
+      </defs>
+    </>
+  );
 }
 
 // ─── Pre/post comparison data builder ────────────────────────────────
@@ -125,6 +189,7 @@ function downloadReport(allScores, clientName, assessmentType, clinicalWriteup) 
   const safeName = (clientName || "Client").replace(/[^a-zA-Z0-9_-]/g, "_");
   const blob = new Blob([
     `CFT ASSESSMENT RESULTS\n${"=".repeat(50)}\n`,
+    `Clinician: ${CLINICIAN}\n`,
     `Client: ${clientName || "N/A"}\n`,
     `Type: ${assessmentType}\n`,
     `Date: ${new Date().toLocaleDateString()}\n\n`,
@@ -150,24 +215,75 @@ function downloadReport(allScores, clientName, assessmentType, clinicalWriteup) 
 
 // ─── Markdown-ish renderer ───────────────────────────────────────────
 
+function renderInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, j) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={j} style={{ fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
 function renderWriteup(text) {
-  return text.split("\n").map((para, i) => {
-    if (!para.trim()) return null;
-    if (para.startsWith("**") || para.startsWith("# ") || para.startsWith("## ")) {
-      const clean = para.replace(/[#*]+/g, "").trim();
+  return text.split("\n").map((line, i) => {
+    if (!line.trim()) return null;
+    if (line.startsWith("## ")) {
+      const clean = line.slice(3).trim();
+      return (
+        <h3 key={i} style={{
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: 17,
+          fontWeight: 600,
+          color: COLORS.soothing,
+          margin: "32px 0 10px",
+          paddingBottom: 6,
+          borderBottom: `2px solid ${COLORS.soothingLight}`,
+          letterSpacing: "0.02em",
+        }}>{clean}</h3>
+      );
+    }
+    if (line.startsWith("# ")) {
+      const clean = line.slice(2).trim();
+      return (
+        <h2 key={i} style={{
+          fontFamily: "'Cormorant Garamond', serif",
+          fontSize: 22,
+          fontWeight: 600,
+          color: COLORS.text,
+          margin: "28px 0 12px",
+        }}>{clean}</h2>
+      );
+    }
+    if (line.match(/^\*\*Target \d|^\*\*[A-Z]/)) {
+      const clean = line.replace(/\*\*/g, "").trim();
       return (
         <h4 key={i} style={{
           fontFamily: "'Outfit', sans-serif",
           fontSize: 15,
           fontWeight: 600,
-          color: COLORS.soothing,
-          margin: "24px 0 8px",
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
+          color: COLORS.driveDark,
+          margin: "20px 0 6px",
         }}>{clean}</h4>
       );
     }
-    return <p key={i} style={{ margin: "0 0 14px" }}>{para.replace(/\*\*/g, "")}</p>;
+    if (line.match(/^[-•]\s/)) {
+      return (
+        <div key={i} style={{ display: "flex", gap: 8, margin: "0 0 8px", paddingLeft: 8 }}>
+          <span style={{ color: COLORS.soothing, fontWeight: 600, flexShrink: 0 }}>-</span>
+          <span>{renderInline(line.replace(/^[-•]\s/, ""))}</span>
+        </div>
+      );
+    }
+    if (line.match(/^\d+\.\s/)) {
+      return (
+        <div key={i} style={{ display: "flex", gap: 8, margin: "0 0 8px", paddingLeft: 8 }}>
+          <span style={{ color: COLORS.soothing, fontWeight: 600, flexShrink: 0 }}>{line.match(/^\d+/)[0]}.</span>
+          <span>{renderInline(line.replace(/^\d+\.\s/, ""))}</span>
+        </div>
+      );
+    }
+    return <p key={i} style={{ margin: "0 0 14px" }}>{renderInline(line)}</p>;
   });
 }
 
@@ -193,7 +309,7 @@ export default function ResultsView({ allScores, clientName, assessmentType, pre
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "anthropic/claude-3.5-sonnet",
-          max_tokens: 4000,
+          max_tokens: 8000,
           messages: [{ role: "user", content: prompt }],
         }),
       });
@@ -224,8 +340,11 @@ export default function ResultsView({ allScores, clientName, assessmentType, pre
         }}>
           {clientName ? `${clientName}'s` : "Your"} Assessment Results
         </h1>
-        <p style={{ fontSize: 14, color: COLORS.textMuted }}>
+        <p style={{ fontSize: 14, color: COLORS.textMuted, margin: "0 0 4px" }}>
           {assessmentType.charAt(0).toUpperCase() + assessmentType.slice(1)} · {new Date().toLocaleDateString()}
+        </p>
+        <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>
+          Clinician: {CLINICIAN}
         </p>
       </div>
 
@@ -267,18 +386,48 @@ export default function ResultsView({ allScores, clientName, assessmentType, pre
           description="Taking helpful action and generating inner support" />
       </div>
 
-      {/* Radar Chart */}
+      {/* Clinical Profile Chart */}
       <div style={{ background: COLORS.white, borderRadius: 16, padding: 24, border: `1px solid ${COLORS.border}`, marginTop: 24 }}>
-        <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, margin: "0 0 16px", textAlign: "center", color: COLORS.text }}>
-          Comprehensive Profile
+        <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, margin: "0 0 4px", textAlign: "center", color: COLORS.text }}>
+          Clinical Profile
         </h3>
+        <p style={{ fontSize: 12, color: COLORS.textMuted, textAlign: "center", margin: "0 0 8px" }}>
+          All scores normalized to percentage of scale range
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+          {[
+            { label: "Low (0-25%)", color: COLORS.soothingLight, border: COLORS.soothing },
+            { label: "Low-Mod (25-50%)", color: "#f5f5f0", border: COLORS.textLight },
+            { label: "Mod-High (50-75%)", color: COLORS.accentLight, border: COLORS.accent },
+            { label: "High (75-100%)", color: COLORS.threatLight, border: COLORS.threat },
+          ].map(z => (
+            <div key={z.label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontFamily: "'Outfit', sans-serif", color: COLORS.textMuted }}>
+              <div style={{ width: 12, height: 12, borderRadius: 2, background: z.color, border: `1px solid ${z.border}` }} />
+              {z.label}
+            </div>
+          ))}
+        </div>
         <ResponsiveContainer width="100%" height={320}>
-          <RadarChart data={buildRadarData(allScores)}>
-            <PolarGrid stroke={COLORS.border} />
-            <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11, fontFamily: "'Outfit', sans-serif", fill: COLORS.textMuted }} />
-            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-            <Radar name="Profile" dataKey="value" stroke={COLORS.soothing} fill={COLORS.soothing} fillOpacity={0.2} strokeWidth={2} />
-          </RadarChart>
+          <BarChart data={buildProfileData(allScores)} layout="vertical" barSize={24} margin={{ left: 20, right: 30 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} horizontal={false} />
+            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: COLORS.textMuted }} tickFormatter={v => `${v}%`}
+              ticks={[0, 25, 50, 75, 100]} />
+            <YAxis type="category" dataKey="name" width={110}
+              tick={{ fontSize: 12, fontFamily: "'Outfit', sans-serif", fill: COLORS.text }} />
+            <Tooltip
+              contentStyle={{ fontFamily: "'Outfit', sans-serif", fontSize: 13, borderRadius: 8, border: `1px solid ${COLORS.border}` }}
+              formatter={(v) => [`${v}%`, "Score"]}
+              labelStyle={{ fontWeight: 600 }}
+            />
+            {[25, 50, 75].map(v => (
+              <CartesianGrid key={v} strokeDasharray="6 4" stroke={v === 50 ? COLORS.textLight : COLORS.border} />
+            ))}
+            <Bar dataKey="value" shape={<ProfileBar />} radius={[0, 4, 4, 0]}>
+              {buildProfileData(allScores).map((entry, i) => (
+                <Cell key={i} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
@@ -320,7 +469,7 @@ export default function ResultsView({ allScores, clientName, assessmentType, pre
           Clinical Narrative
         </h3>
         <p style={{ fontSize: 13, color: COLORS.textMuted, margin: "0 0 20px", lineHeight: 1.5 }}>
-          AI-generated clinical write-up integrating all assessment findings through a CFT lens. This narrative maps scores onto the three emotion regulation systems and identifies therapeutic directions.
+          Comprehensive clinical report with treatment plan, specific CFT interventions, between-session practices, and therapeutic relationship considerations.
         </p>
         {!clinicalWriteup && !generating && (
           <Button variant="accent" onClick={generateClinicalWriteup}>
