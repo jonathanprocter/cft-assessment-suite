@@ -188,7 +188,7 @@ export default function ResultsView({ allScores, clientName, assessmentType, pre
     const prompt = buildClinicalPrompt(allScores, clientName, assessmentType, previousData);
 
     try {
-      const response = await fetch(`${proxyBase.replace(/\\/$/, "")}/v1/messages`, {
+      const response = await fetch(`${proxyBase.replace(/\/$/, "")}/v1/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
