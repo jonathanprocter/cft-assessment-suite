@@ -93,22 +93,74 @@ export default function ThreeCircles({ ecrScores, focsScores, ceasScores }) {
       </div>
 
       {/* SVG diagram */}
-      <svg viewBox="0 0 500 340" style={{ width: "100%", maxWidth: 500, display: "block", margin: "0 auto" }}>
-        <defs>
-          <marker id="arrowR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill={COLORS.textLight} /></marker>
-          <marker id="arrowL" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto"><path d="M8,0 L0,3 L8,6" fill={COLORS.textLight} /></marker>
-        </defs>
+      {(() => {
+        const driveR = 36 + (driveActivation / 100) * 44;
+        const soothR = 36 + (soothingActivation / 100) * 44;
+        const threatR = 36 + (threatActivation / 100) * 44;
+        const driveCx = 120, driveCy = 145;
+        const soothCx = 380, soothCy = 145;
+        const threatCx = 250, threatCy = 280;
+        const gap = 12;
 
-        {/* Arrows between systems */}
-        <line x1={195} y1={130} x2={305} y2={130} stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arrowR)" />
-        <line x1={305} y1={150} x2={195} y2={150} stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arrowL)" />
-        <line x1={155} y1={205} x2={215} y2={245} stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arrowR)" />
-        <line x1={345} y1={205} x2={285} y2={245} stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arrowL)" />
+        // Drive ↔ Soothing (horizontal)
+        const dsX1 = driveCx + driveR + gap;
+        const dsX2 = soothCx - soothR - gap;
+        const dsY1 = driveCy - 6;
+        const dsY2 = driveCy + 6;
 
-        <CircleSystem cx={120} cy={145} label="DRIVE" sublabel="Incentive · Resource" pct={driveActivation} color={COLORS.driveDark} />
-        <CircleSystem cx={380} cy={145} label="SOOTHING" sublabel="Safeness · Affiliation" pct={soothingActivation} color={COLORS.soothingDark} />
-        <CircleSystem cx={250} cy={270} label="THREAT" sublabel="Protection · Safety" pct={threatActivation} color={COLORS.threatDark} />
-      </svg>
+        // Drive ↔ Threat (diagonal)
+        const dtAngle = Math.atan2(threatCy - driveCy, threatCx - driveCx);
+        const dtX1 = driveCx + Math.cos(dtAngle) * (driveR + gap);
+        const dtY1 = driveCy + Math.sin(dtAngle) * (driveR + gap);
+        const dtX2 = threatCx - Math.cos(dtAngle) * (threatR + gap);
+        const dtY2 = threatCy - Math.sin(dtAngle) * (threatR + gap);
+
+        // Soothing ↔ Threat (diagonal)
+        const stAngle = Math.atan2(threatCy - soothCy, threatCx - soothCx);
+        const stX1 = soothCx + Math.cos(stAngle) * (soothR + gap);
+        const stY1 = soothCy + Math.sin(stAngle) * (soothR + gap);
+        const stX2 = threatCx - Math.cos(stAngle) * (threatR + gap);
+        const stY2 = threatCy - Math.sin(stAngle) * (threatR + gap);
+
+        // Offset for parallel arrows (perpendicular to line direction)
+        const dtPerpX = Math.sin(dtAngle) * 5;
+        const dtPerpY = -Math.cos(dtAngle) * 5;
+        const stPerpX = Math.sin(stAngle) * 5;
+        const stPerpY = -Math.cos(stAngle) * 5;
+
+        return (
+          <svg viewBox="0 0 500 360" style={{ width: "100%", maxWidth: 500, display: "block", margin: "0 auto" }}>
+            <defs>
+              <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                <path d="M0,0.5 L7,3 L0,5.5" fill="none" stroke={COLORS.textLight} strokeWidth={1.2} />
+              </marker>
+            </defs>
+
+            {/* Drive → Soothing */}
+            <line x1={dsX1} y1={dsY1} x2={dsX2} y2={dsY1} stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arr)" />
+            {/* Soothing → Drive */}
+            <line x1={dsX2} y1={dsY2} x2={dsX1} y2={dsY2} stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arr)" />
+
+            {/* Drive → Threat */}
+            <line x1={dtX1 + dtPerpX} y1={dtY1 + dtPerpY} x2={dtX2 + dtPerpX} y2={dtY2 + dtPerpY}
+              stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arr)" />
+            {/* Threat → Drive */}
+            <line x1={dtX2 - dtPerpX} y1={dtY2 - dtPerpY} x2={dtX1 - dtPerpX} y2={dtY1 - dtPerpY}
+              stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arr)" />
+
+            {/* Soothing → Threat */}
+            <line x1={stX1 - stPerpX} y1={stY1 - stPerpY} x2={stX2 - stPerpX} y2={stY2 - stPerpY}
+              stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arr)" />
+            {/* Threat → Soothing */}
+            <line x1={stX2 + stPerpX} y1={stY2 + stPerpY} x2={stX1 + stPerpX} y2={stY1 + stPerpY}
+              stroke={COLORS.textLight} strokeWidth={1.5} markerEnd="url(#arr)" />
+
+            <CircleSystem cx={driveCx} cy={driveCy} label="DRIVE" sublabel="Incentive · Resource" pct={driveActivation} color={COLORS.driveDark} />
+            <CircleSystem cx={soothCx} cy={soothCy} label="SOOTHING" sublabel="Safeness · Affiliation" pct={soothingActivation} color={COLORS.soothingDark} />
+            <CircleSystem cx={threatCx} cy={threatCy} label="THREAT" sublabel="Protection · Safety" pct={threatActivation} color={COLORS.threatDark} />
+          </svg>
+        );
+      })()}
 
       {/* Score breakdown by system */}
       <div style={{
